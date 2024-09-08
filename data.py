@@ -106,6 +106,88 @@ df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
 df.dropna(inplace=True)
 
-print(df.head())
 
+# In order to add the labels in our dataset we're going to lift out dataframe up by one position.
+labels = df.shift(-1)
+
+df = df.iloc[:-1]
+
+labels = labels.iloc[:-1]
+
+SEQUENCE_LEN  = 24 
+
+def create_sequences(data, labels, mean, std, sequence_length=SEQUENCE_LEN):
+    sequences = []
+    lab = []
+    data_size = len(data)
+
+
+    for i in range(data_size - (sequence_length + 13)): # why 13 -> ensures that we have a data for the label.
+        if i == 0:
+            continue
+        sequences.append(data[i:i+sequence_length])
+        lab.append([labels[i-1], labels[i+12], mean, std])
+
+    for i in range(0, len(lab)):
+        last_price_data = sequences[i][-1][0]
+        last_price_label = lab[i][0]
+
+        if not last_price_data == last_price_label:
+            print(f"Error: last_price_label = {last_price_label} and last_price_data = {last_price_data} are not equal")
+    return np.array(sequences), np.array(lab)
+
+
+sequence_dict = {}
+sequnce_labels = {}
+
+for ticker in tickers:
+
+    # Extract close and volume data for every ticker
+
+    close = df[ticker+'_close'].values
+    volume = df[ticker+'_volume'].values
+    rsi = df[ticker+'_rsi'].values
+    roc = df[ticker+'_roc'].values
+    width = df[ticker+'_width'].values
+    diff = df[ticker+'_diff'].values
+    pct_change = df[ticker+'_percent_change_close'].values
+
+    ticker_data = np.column_stack((close,
+                                   width,
+                                   rsi,
+                                   roc,
+                                   volume,
+                                   diff,
+                                   pct_change))
+    
+    # Generate the sequence
+
+    attribute = ticker+"_close"
+    ticker_sequences, lab = create_sequences(
+        ticker_data,
+        labels[attribute].values[SEQUENCE_LEN-1:],
+        stats[attribute+"_mean"],
+        stats[attribute+"_std"]
+    )
+
+    sequence_dict[ticker] = ticker_sequences
+    sequnce_labels[ticker] = lab
+
+
+
+# lets aggregates the data and make  unified dataset for model training.
+
+all_sequences = []
+all_labels = []
+
+for ticker in tickers:
+    all_sequences.extend(sequence_dict[ticker])
+    all_labels.extend(sequnce_labels[ticker])
+
+# convert to numpy array
+all_sequences = np.array(all_sequences)
+all_labels = np.array(all_labels)
+
+np.save("all_sequences.npy", all_sequences)
+np.save("all_labels.npy", all_labels)
 

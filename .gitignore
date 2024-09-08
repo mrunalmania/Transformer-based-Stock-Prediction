@@ -1,2 +1,4 @@
 venv
 .vscode
+all_labels.npy
+all_sequences.npy

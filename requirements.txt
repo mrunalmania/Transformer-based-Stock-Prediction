@@ -1,2 +1,4 @@
-tensorflow==2.17.0
 yfinance==0.2.43
+torch==2.4.1
+torchsummary==1.5.1
+matplotlib==1.3.0
